@@ -22,7 +22,7 @@ public class MessagePersistenceService(
     ISerializer serializer
 ) : IMessagePersistenceService
 {
-    public Task<IReadOnlyList<StoreMessage>> GetByFilterAsync(
+    public virtual Task<IReadOnlyList<StoreMessage>> GetByFilterAsync(
         Expression<Func<StoreMessage, bool>>? predicate = null,
         CancellationToken cancellationToken = default
     )
@@ -30,25 +30,53 @@ public class MessagePersistenceService(
         return messagePersistenceRepository.GetByFilterAsync(predicate ?? (_ => true), cancellationToken);
     }
 
-    public async Task AddPublishMessageAsync<TMessage>(
+    public virtual Task<IReadOnlyList<TResult>> GetSelectorByFilterAsync<TResult>(
+        Expression<Func<StoreMessage, bool>>? predicate,
+        Expression<Func<StoreMessage, TResult>> selector,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return messagePersistenceRepository.GetSelectorByFilterAsync(
+            predicate ?? (_ => true),
+            selector: selector,
+            cancellationToken: cancellationToken
+        );
+    }
+
+    public virtual Task<IReadOnlyList<TResult>> GetSelectorAfterGroupingByFilterAsync<TKey, TResult>(
+        Expression<Func<StoreMessage, bool>>? predicate,
+        Expression<Func<StoreMessage, TKey>> grouping,
+        Expression<Func<IGrouping<TKey, StoreMessage>, TResult>> selector,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return messagePersistenceRepository.GetSelectorAfterGroupingByFilterAsync(
+            predicate ?? (_ => true),
+            grouping: grouping,
+            selector: selector,
+            cancellationToken: cancellationToken
+        );
+    }
+
+    public virtual async Task AddPublishMessageAsync<TMessage>(
         IEventEnvelope<TMessage> eventEnvelope,
         CancellationToken cancellationToken = default
     )
         where TMessage : IMessage
     {
-        await AddMessageCore(eventEnvelope, MessageDeliveryType.Outbox, cancellationToken);
+        await AddMessageCoreAsync(eventEnvelope, MessageDeliveryType.Outbox, cancellationToken);
     }
 
-    public async Task AddReceivedMessageAsync<TMessage>(
+    public virtual async Task AddReceivedMessageAsync<TMessage>(
         IEventEnvelope<TMessage> eventEnvelope,
         CancellationToken cancellationToken = default
     )
         where TMessage : IMessage
     {
-        await AddMessageCore(eventEnvelope, MessageDeliveryType.Inbox, cancellationToken);
+        await AddMessageCoreAsync(eventEnvelope, MessageDeliveryType.Inbox, cancellationToken);
     }
 
-    public async Task AddInternalMessageAsync<TInternalCommand>(
+    public virtual async Task AddInternalMessageAsync<TInternalCommand>(
         TInternalCommand internalCommand,
         CancellationToken cancellationToken = default
     )
@@ -65,7 +93,7 @@ public class MessagePersistenceService(
         );
     }
 
-    public async Task AddNotificationAsync<TDomainNotification>(
+    public virtual async Task AddNotificationAsync<TDomainNotification>(
         TDomainNotification notification,
         CancellationToken cancellationToken = default
     )
@@ -82,7 +110,7 @@ public class MessagePersistenceService(
         );
     }
 
-    private async Task AddMessageCore(
+    protected internal virtual async Task AddMessageCoreAsync(
         IEventEnvelope eventEnvelope,
         MessageDeliveryType deliveryType,
         CancellationToken cancellationToken = default
@@ -109,7 +137,7 @@ public class MessagePersistenceService(
         );
     }
 
-    public async Task ProcessAsync(Guid messageId, CancellationToken cancellationToken = default)
+    public virtual async Task ProcessAsync(Guid messageId, CancellationToken cancellationToken = default)
     {
         var message = await messagePersistenceRepository.GetByIdAsync(messageId, cancellationToken);
 
@@ -119,20 +147,20 @@ public class MessagePersistenceService(
         switch (message.DeliveryType)
         {
             case MessageDeliveryType.Inbox:
-                await ProcessInbox(message, cancellationToken);
+                await ProcessInboxAsync(message, cancellationToken);
                 break;
             case MessageDeliveryType.Internal:
-                await ProcessInternal(message, cancellationToken);
+                await ProcessInternalAsync(message, cancellationToken);
                 break;
             case MessageDeliveryType.Outbox:
-                await ProcessOutbox(message, cancellationToken);
+                await ProcessOutboxAsync(message, cancellationToken);
                 break;
         }
 
         await messagePersistenceRepository.ChangeStateAsync(message.Id, MessageStatus.Processed, cancellationToken);
     }
 
-    public async Task ProcessAllAsync(CancellationToken cancellationToken = default)
+    public virtual async Task ProcessAllAsync(CancellationToken cancellationToken = default)
     {
         var messages = await messagePersistenceRepository.GetByFilterAsync(
             x => x.MessageStatus != MessageStatus.Processed,
@@ -145,7 +173,10 @@ public class MessagePersistenceService(
         }
     }
 
-    private async Task ProcessOutbox(StoreMessage storeMessage, CancellationToken cancellationToken)
+    protected internal virtual async Task ProcessOutboxAsync(
+        StoreMessage storeMessage,
+        CancellationToken cancellationToken
+    )
     {
         var messageType = TypeMapper.GetType(storeMessage.DataType);
         var eventEnvelope = messageSerializer.Deserialize(storeMessage.Data, messageType);
@@ -166,7 +197,10 @@ public class MessagePersistenceService(
         );
     }
 
-    private async Task ProcessInternal(StoreMessage storeMessage, CancellationToken cancellationToken)
+    protected internal virtual async Task ProcessInternalAsync(
+        StoreMessage storeMessage,
+        CancellationToken cancellationToken
+    )
     {
         var messageType = TypeMapper.GetType(storeMessage.DataType);
         var internalMessage = serializer.Deserialize(storeMessage.Data, messageType);
@@ -197,7 +231,7 @@ public class MessagePersistenceService(
         }
     }
 
-    private Task ProcessInbox(StoreMessage storeMessage, CancellationToken cancellationToken)
+    protected internal virtual Task ProcessInboxAsync(StoreMessage storeMessage, CancellationToken cancellationToken)
     {
         var messageType = TypeMapper.GetType(storeMessage.DataType);
         var messageEnvelope = messageSerializer.Deserialize(storeMessage.Data, messageType);

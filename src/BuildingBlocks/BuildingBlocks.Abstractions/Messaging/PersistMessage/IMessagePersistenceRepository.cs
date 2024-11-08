@@ -16,6 +16,18 @@ public interface IMessagePersistenceRepository
         CancellationToken cancellationToken = default
     );
 
+    Task<IReadOnlyList<TResult>> GetSelectorByFilterAsync<TResult>(
+        Expression<Func<StoreMessage, bool>> predicate,
+        Expression<Func<StoreMessage, TResult>> selector,
+        CancellationToken cancellationToken = default
+    );
+    Task<IReadOnlyList<TResult>> GetSelectorAfterGroupingByFilterAsync<TKey, TResult>(
+        Expression<Func<StoreMessage, bool>> predicate,
+        Expression<Func<StoreMessage, TKey>> grouping,
+        Expression<Func<IGrouping<TKey, StoreMessage>, TResult>> selector,
+        CancellationToken cancellationToken = default
+    );
+
     Task<StoreMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<bool> RemoveAsync(StoreMessage storeMessage, CancellationToken cancellationToken = default);

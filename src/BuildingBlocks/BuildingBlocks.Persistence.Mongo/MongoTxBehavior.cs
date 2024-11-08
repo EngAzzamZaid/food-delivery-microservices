@@ -69,7 +69,9 @@ public class MongoTxBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
 
             return response;
         }
+#pragma warning disable CS0168
         catch (System.Exception e)
+#pragma warning restore CS0168
         {
             await _dbContext.RollbackTransaction(cancellationToken);
             throw;

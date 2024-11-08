@@ -36,14 +36,14 @@ public static class MongoQueryableExtensions
         return ListResultModel<T>.Create(data, totalItems, page, pageSize);
     }
 
-    public static async Task<ListResultModel<R>> ApplyPagingAsync<T, R>(
+    public static async Task<ListResultModel<TR>> ApplyPagingAsync<T, TR>(
         this IMongoQueryable<T> collection,
         IConfigurationProvider configuration,
         int page = 1,
         int pageSize = 10,
         CancellationToken cancellationToken = default
     )
-        where R : notnull
+        where TR : notnull
     {
         if (page <= 0)
             page = 1;
@@ -53,13 +53,13 @@ public static class MongoQueryableExtensions
 
         var isEmpty = await collection.AnyAsync(cancellationToken: cancellationToken) == false;
         if (isEmpty)
-            return ListResultModel<R>.Empty;
+            return ListResultModel<TR>.Empty;
 
         var totalItems = await collection.CountAsync(cancellationToken: cancellationToken);
         var totalPages = (int)Math.Ceiling((decimal)totalItems / pageSize);
-        var data = collection.Skip(page, pageSize).ProjectTo<R>(configuration).ToList();
+        var data = collection.Skip(page, pageSize).ProjectTo<TR>(configuration).ToList();
 
-        return ListResultModel<R>.Create(data, totalItems, page, pageSize);
+        return ListResultModel<TR>.Create(data, totalItems, page, pageSize);
     }
 
     public static IMongoQueryable<T> Skip<T>(this IMongoQueryable<T> collection, int page = 1, int resultsPerPage = 10)
@@ -87,12 +87,40 @@ public static class MongoQueryableExtensions
 
         List<Expression<Func<TEntity, bool>>> filterExpressions = new List<Expression<Func<TEntity, bool>>>();
 
-        foreach (var (fieldName, comparision, fieldValue) in filters)
+        foreach (var (fieldName, comparison, fieldValue) in filters)
         {
-            Expression<Func<TEntity, bool>> expr = PredicateBuilder.Build<TEntity>(fieldName, comparision, fieldValue);
+            Expression<Func<TEntity, bool>> expr = PredicateBuilder.Build<TEntity>(fieldName, comparison, fieldValue);
             filterExpressions.Add(expr);
         }
 
         return source.Where(filterExpressions.Aggregate((expr1, expr2) => expr1.And(expr2)));
+    }
+
+    public static Expression<Func<TEntity, bool>> ApplyAndFilter<TEntity>(
+        this IList<Expression<Func<TEntity, bool>>> filterExpressions
+    )
+    {
+        return filterExpressions.Aggregate((expr1, expr2) => expr1.And(expr2));
+    }
+
+    public static IDictionary<string, Expression<Func<TEntity, bool>>> ConvertToEntityFilters<TEntity>(
+        this IEnumerable<FilterModel>? filters
+    )
+        where TEntity : class
+    {
+        Dictionary<string, Expression<Func<TEntity, bool>>> filterExpressions = new Dictionary<
+            string,
+            Expression<Func<TEntity, bool>>
+        >(StringComparer.OrdinalIgnoreCase);
+        if (filters is null)
+            return filterExpressions;
+
+        foreach (var (fieldName, comparison, fieldValue) in filters)
+        {
+            Expression<Func<TEntity, bool>> expr = PredicateBuilder.Build<TEntity>(fieldName, comparison, fieldValue);
+            filterExpressions.Add(fieldName, expr);
+        }
+
+        return filterExpressions;
     }
 }

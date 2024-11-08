@@ -2,7 +2,7 @@ using BuildingBlocks.Abstractions.Core;
 
 namespace BuildingBlocks.Core.IdsGenerator;
 
-public class GuidIdGenerator : IIdGenerator<Guid>
+public partial class GuidIdGenerator : IIdGenerator<Guid>
 {
     public Guid New()
     {

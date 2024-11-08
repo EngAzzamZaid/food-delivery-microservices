@@ -21,7 +21,7 @@ public class MessagePersistenceBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!await lifetime.WaitForAppStartup(stoppingToken))
+        if (!await lifetime.WaitForAppStartup(stoppingToken).ConfigureAwait(false))
         {
             return;
         }

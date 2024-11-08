@@ -36,7 +36,7 @@ public static class DependencyInjectionExtensions
         services.TryAddScoped<IConnectionFactory>(sp => new NpgsqlConnectionFactory(
             options.ConnectionString.NotBeEmptyOrNull()
         ));
-
+#pragma warning disable SA1515
         services.AddDbContext<TDbContext>(
             (sp, dbContextOptionsBuilder) =>
             {
@@ -56,7 +56,7 @@ public static class DependencyInjectionExtensions
                     )
                     // https://github.com/efcore/EFCore.NamingConventions
                     .UseSnakeCaseNamingConvention();
-
+#pragma warning restore SA1515
                 // ref: https://andrewlock.net/series/using-strongly-typed-entity-ids-to-avoid-primitive-obsession/
                 dbContextOptionsBuilder.ReplaceService<
                     IValueConverterSelector,

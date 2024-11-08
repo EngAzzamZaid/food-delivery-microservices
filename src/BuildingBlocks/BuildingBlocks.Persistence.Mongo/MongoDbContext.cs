@@ -11,7 +11,9 @@ public class MongoDbContext : IMongoDbContext, ITxDbContextExecution
     public IClientSessionHandle? Session { get; set; }
     public IMongoDatabase Database { get; }
     public IMongoClient MongoClient { get; }
+#pragma warning disable CA1051
     protected readonly IList<Func<Task>> Commands;
+#pragma warning restore CA1051
 
     public MongoDbContext(MongoOptions options)
     {
@@ -20,7 +22,9 @@ public class MongoDbContext : IMongoDbContext, ITxDbContextExecution
         Database = MongoClient.GetDatabase(databaseName);
 
         // Every command will be stored and it'll be processed at SaveChanges
+#pragma warning disable HLQ001
         Commands = new List<Func<Task>>();
+#pragma warning restore HLQ001
     }
 
     public IMongoCollection<T> GetCollection<T>(string? name = null)
@@ -48,11 +52,13 @@ public class MongoDbContext : IMongoDbContext, ITxDbContextExecution
 
                 await Session.CommitTransactionAsync(cancellationToken);
             }
+#pragma warning disable CS0168
             catch (NotSupportedException notSupportedException)
             {
                 await SaveAction();
             }
             catch (Exception ex)
+#pragma warning restore CS0168
             {
                 await Session.AbortTransactionAsync(cancellationToken);
                 Commands.Clear();

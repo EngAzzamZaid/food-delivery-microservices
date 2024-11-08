@@ -28,13 +28,13 @@ namespace BuildingBlocks.Persistence.Mongo
             {
                 // If we found a matching constructor then we map it and all the readonly properties
                 var matchProperties = GetMatchingProperties(constructor, readOnlyProperties);
-                if (matchProperties.Any())
+                if (matchProperties.Count != 0)
                 {
                     // Map constructor
                     classMap.MapConstructor(constructor);
 
                     // Map properties
-                    foreach (var p in CollectionsMarshal.AsSpan(matchProperties))
+                    foreach (ref var p in CollectionsMarshal.AsSpan(matchProperties))
                         classMap.MapMember(p);
                 }
             }
@@ -47,8 +47,8 @@ namespace BuildingBlocks.Persistence.Mongo
         {
             var matchProperties = new List<PropertyInfo>();
 
-            var ctorParameters = constructor.GetParameters();
-            foreach (var ctorParameter in ctorParameters)
+            // var ctorParameters = constructor.GetParameters();
+            foreach (var ctorParameter in constructor.GetParameters())
             {
                 var matchProperty = properties.FirstOrDefault(p => ParameterMatchProperty(ctorParameter, p));
                 if (matchProperty == null)
@@ -82,7 +82,11 @@ namespace BuildingBlocks.Persistence.Mongo
 
             // skip overridden properties (they are already included by the base class)
             var getMethodInfo = propertyInfo.GetMethod;
-            if (getMethodInfo.IsVirtual && getMethodInfo.GetBaseDefinition().DeclaringType != classMap.ClassType)
+            if (
+                getMethodInfo != null
+                && getMethodInfo.IsVirtual
+                && getMethodInfo.GetBaseDefinition().DeclaringType != classMap.ClassType
+            )
                 return false;
 
             return true;

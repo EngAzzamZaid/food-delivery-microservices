@@ -60,6 +60,42 @@ public class InMemoryMessagePersistenceRepository : IMessagePersistenceRepositor
         return Task.FromResult<IReadOnlyList<StoreMessage>>(result);
     }
 
+    public virtual Task<IReadOnlyList<TResult>> GetSelectorByFilterAsync<TResult>(
+        Expression<Func<StoreMessage, bool>> predicate,
+        Expression<Func<StoreMessage, TResult>> selector,
+        CancellationToken cancellationToken = default
+    )
+    {
+        predicate.NotBeNull();
+
+        var result = _messages
+            .Select(x => x.Value)
+            .Where(predicate.Compile())
+            .Select(selector.Compile())
+            .ToImmutableList();
+
+        return Task.FromResult<IReadOnlyList<TResult>>(result);
+    }
+
+    public virtual Task<IReadOnlyList<TResult>> GetSelectorAfterGroupingByFilterAsync<TKey, TResult>(
+        Expression<Func<StoreMessage, bool>> predicate,
+        Expression<Func<StoreMessage, TKey>> grouping,
+        Expression<Func<IGrouping<TKey, StoreMessage>, TResult>> selector,
+        CancellationToken cancellationToken = default
+    )
+    {
+        predicate.NotBeNull();
+
+        var result = _messages
+            .Select(x => x.Value)
+            .Where(predicate.Compile())
+            .GroupBy(grouping.Compile())
+            .Select(selector.Compile())
+            .ToImmutableList();
+
+        return Task.FromResult<IReadOnlyList<TResult>>(result);
+    }
+
     public Task<StoreMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var result = _messages.FirstOrDefault(x => x.Key == id).Value;

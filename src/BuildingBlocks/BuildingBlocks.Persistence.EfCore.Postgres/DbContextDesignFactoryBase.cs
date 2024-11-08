@@ -45,7 +45,8 @@ public abstract class DbContextDesignFactoryBase<TDbContext>(string connectionSt
             )
             .UseSnakeCaseNamingConvention()
             .ReplaceService<IValueConverterSelector, StronglyTypedIdValueConverterSelector<long>>();
-
+#pragma warning disable CS8600,CS8603
         return (TDbContext)Activator.CreateInstance(typeof(TDbContext), optionsBuilder.Options);
+#pragma warning restore CS8600,CS8603
     }
 }

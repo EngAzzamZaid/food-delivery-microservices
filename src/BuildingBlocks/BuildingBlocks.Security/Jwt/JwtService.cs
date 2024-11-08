@@ -112,7 +112,9 @@ public class JwtService(IOptions<JwtOptions> jwtOptions) : IJwtService
             ValidateIssuer = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey)),
+#pragma warning disable CA5404
             ValidateLifetime = false,
+#pragma warning restore CA5404
             ClockSkew = TimeSpan.Zero,
         };
 
